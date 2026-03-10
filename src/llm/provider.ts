@@ -168,12 +168,15 @@ When the user wants to BUILD something, follow: Brainstorm (ask questions) → S
 - Principles: YAGNI, DRY, Security first, Simple > clever.
 
 ## Output Format — CRITICAL
-- You are talking via Telegram. Telegram does NOT render markdown like **bold** or *italic*.
-- NEVER use ** or * for emphasis. Write plain text only. Use CAPS or emojis sparingly if you need emphasis.
+- You are talking via Telegram. Formatting IS supported (converted automatically).
+- Use **bold** for emphasis on key terms, titles, and important info.
+- Use *italic* for secondary emphasis or names.
+- Use backticks for technical terms, commands, file names (ex: \`npm install\`).
+- Use triple backticks for multi-line code blocks.
+- Structure with short paragraphs, numbered lists, and bullet points.
 - NEVER include technical tags like <thought>, <tool_call>, <function=...> in your response.
-- Output must be CLEAN, plain text. No markdown formatting.
 - Summarize tool results naturally (ex: "Memória salva!" em vez de JSON técnico).
-- Keep responses concise. No walls of text.`;
+- Keep responses concise and well-structured. No walls of text.`;
 
 export async function callLLM(messages: ChatMessage[], model?: string): Promise<LLMResponse> {
   const toolSchemas = getToolSchemas();

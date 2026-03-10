@@ -14,17 +14,17 @@ export function createBot(): Bot {
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
   const allowedUserIds = new Set(config.TELEGRAM_ALLOWED_USER_IDS);
 
-  // Connect background task notifications to Telegram
+  // Connect background task notifications to Telegram (with HTML formatting)
   setNotifyFn(async (userId: number, message: string) => {
     try {
-      const MAX_LENGTH = 4096;
-      if (message.length <= MAX_LENGTH) {
-        await bot.api.sendMessage(userId, message);
-      } else {
-        // Split long notifications
-        for (let i = 0; i < message.length; i += MAX_LENGTH) {
-          await bot.api.sendMessage(userId, message.substring(i, i + MAX_LENGTH));
-        }
+      const chunks = splitMessage(message, 4096);
+      for (const chunk of chunks) {
+        await sendHTML(
+          async (t, pm) => {
+            await bot.api.sendMessage(userId, t, pm ? { parse_mode: pm as any } : undefined);
+          },
+          chunk,
+        );
       }
     } catch (err) {
       console.error(`[notify] Failed to notify user ${userId}:`, err);
@@ -140,38 +140,114 @@ export function createBot(): Bot {
   return bot;
 }
 
+// ─── Markdown → Telegram HTML converter ──────────────────────────
+
+function markdownToTelegramHTML(text: string): string {
+  // 1. Escape HTML special chars FIRST (but not in code blocks)
+  // Extract code blocks, escape the rest, then put code blocks back
+  const codeBlocks: string[] = [];
+
+  // Preserve ```code blocks```
+  let processed = text.replace(/```([\s\S]*?)```/g, (_match, code) => {
+    codeBlocks.push(code);
+    return `%%CODEBLOCK_${codeBlocks.length - 1}%%`;
+  });
+
+  // Preserve `inline code`
+  const inlineCodes: string[] = [];
+  processed = processed.replace(/`([^`]+)`/g, (_match, code) => {
+    inlineCodes.push(code);
+    return `%%INLINE_${inlineCodes.length - 1}%%`;
+  });
+
+  // Escape HTML entities in remaining text
+  processed = processed
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // 2. Convert markdown formatting to HTML
+  // **bold** or __bold__ → <b>bold</b>
+  processed = processed.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  processed = processed.replace(/__(.+?)__/g, "<b>$1</b>");
+
+  // *italic* or _italic_ (but not inside words like file_name)
+  processed = processed.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, "<i>$1</i>");
+  processed = processed.replace(/(?<!\w)_(.+?)_(?!\w)/g, "<i>$1</i>");
+
+  // ~~strikethrough~~ → <s>strikethrough</s>
+  processed = processed.replace(/~~(.+?)~~/g, "<s>$1</s>");
+
+  // 3. Restore code blocks
+  processed = processed.replace(/%%CODEBLOCK_(\d+)%%/g, (_match, idx) => {
+    return `<pre>${codeBlocks[parseInt(idx)].replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`;
+  });
+
+  processed = processed.replace(/%%INLINE_(\d+)%%/g, (_match, idx) => {
+    return `<code>${inlineCodes[parseInt(idx)].replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`;
+  });
+
+  return processed;
+}
+
+// ─── Safe HTML send: falls back to plain text if parse fails ─────
+
+async function sendHTML(
+  sendFn: (text: string, parseMode?: string) => Promise<void>,
+  text: string,
+): Promise<void> {
+  const html = markdownToTelegramHTML(text);
+  try {
+    await sendFn(html, "HTML");
+  } catch (err: any) {
+    // If HTML parsing fails (bad tags), fallback to plain text
+    if (err?.error_code === 400 && err?.description?.includes("parse")) {
+      console.warn("[telegram] HTML parse failed, sending as plain text");
+      await sendFn(text);
+    } else {
+      throw err;
+    }
+  }
+}
+
+// ─── Send long messages with HTML formatting ─────────────────────
+
 async function sendLongMessage(ctx: Context, text: string): Promise<void> {
   const MAX_LENGTH = 4096;
+  const chunks = splitMessage(text, MAX_LENGTH);
 
-  if (text.length <= MAX_LENGTH) {
-    await ctx.reply(text);
-    return;
+  console.log(`[telegram] Sending ${chunks.length} chunk(s) with HTML formatting.`);
+  for (const chunk of chunks) {
+    await sendHTML(
+      async (t, pm) => { await ctx.reply(t, pm ? { parse_mode: pm as any } : undefined); },
+      chunk,
+    );
   }
+}
 
-  // Split into chunks at line breaks when possible
+function splitMessage(text: string, maxLength: number): string[] {
+  if (text.length <= maxLength) return [text];
+
   const chunks: string[] = [];
   let remaining = text;
 
   while (remaining.length > 0) {
-    if (remaining.length <= MAX_LENGTH) {
+    if (remaining.length <= maxLength) {
       chunks.push(remaining);
       break;
     }
 
-    let splitIndex = remaining.lastIndexOf("\n", MAX_LENGTH);
-    if (splitIndex === -1 || splitIndex < MAX_LENGTH / 2) {
-      splitIndex = remaining.lastIndexOf(" ", MAX_LENGTH);
+    let splitIndex = remaining.lastIndexOf("\n", maxLength);
+    if (splitIndex === -1 || splitIndex < maxLength / 2) {
+      splitIndex = remaining.lastIndexOf(" ", maxLength);
     }
     if (splitIndex === -1) {
-      splitIndex = MAX_LENGTH;
+      splitIndex = maxLength;
     }
 
     chunks.push(remaining.substring(0, splitIndex));
     remaining = remaining.substring(splitIndex).trimStart();
   }
 
-  console.log(`[telegram] Message split into ${chunks.length} chunks.`);
-  for (const chunk of chunks) {
-    await ctx.reply(chunk);
-  }
+  return chunks;
 }
