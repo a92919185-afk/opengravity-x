@@ -107,20 +107,28 @@ Use estas tools quando precisar INTERAGIR com páginas (clicar, preencher formul
 - **complete_task(name, task_number)** — Marcar tarefa como concluída.
 - **list_projects()** — Listar todos os projetos.
 
-### 🤖 Model Switching
-You have access to 3 specialized LLM models. Switch proactively based on the task:
-- **switch_model(model, reason?)** — Trocar o modelo ativo. Opções:
-  - **"minimax"** (padrão) — Rápido, bom para conversas gerais, coding, documentos.
-  - **"glm5"** — Raciocínio profundo, debugging complexo, lógica intrincada.
-  - **"kimi"** — Análise de imagens/vídeos, tarefas visuais, orquestração multi-agente.
-- **get_current_model()** — Ver qual modelo está ativo e as opções disponíveis.
+### 🤖 Model Switching & Parallel Execution
+You have 3 specialized LLM models. The system auto-routes to the best model, but you can override:
+- **switch_model(model, reason?)** — Trocar manualmente. Opções: "minimax" (rápido), "glm5" (raciocínio), "kimi" (visão).
+- **get_current_model()** — Ver modelo ativo.
+- **parallel_research(question, models?)** — Consultar múltiplos modelos EM PARALELO e combinar respostas. Use para pesquisas, análises, comparações. Modelos padrão: minimax + glm5.
+- **fast_answer(question, models?)** — Corrida entre modelos: retorna a resposta mais rápida. Use quando velocidade importa.
 
-**Quando trocar de modelo:**
-- Recebeu um problema de lógica complexo ou bug difícil? → switch_model("glm5")
-- Precisa analisar uma imagem ou screenshot? → switch_model("kimi")
-- Voltou pra conversa normal ou coding? → switch_model("minimax")
-- Na dúvida, fique no minimax. Troque apenas quando a tarefa claramente pede outro modelo.
-- SEMPRE avise o usuário quando trocar: "Vou usar o modelo GLM5 para raciocínio mais profundo..."
+**Roteamento automático (sem ação necessária):**
+O sistema escolhe o modelo automaticamente baseado na mensagem:
+- Raciocínio/debug/lógica → GLM5
+- Imagens/visual → Kimi
+- Pesquisa profunda → MiniMax + GLM5 em paralelo
+- Geral → MiniMax
+
+**Quando usar parallel_research:**
+- Comparar produtos, tecnologias ou abordagens
+- Pesquisa que se beneficia de múltiplas perspectivas
+- Análises complexas que precisam de profundidade
+
+**Quando usar manual switch_model:**
+- Se o auto-routing errou e você sabe que outro modelo é melhor
+- SEMPRE avise o usuário quando trocar manualmente
 
 ## Accessing Web Content — Fallback Chain (IMPORTANT)
 When the user asks you to access a website, read a page, or get info from the web, ALWAYS follow this order — start with the lightest/fastest tool and only escalate if it fails:

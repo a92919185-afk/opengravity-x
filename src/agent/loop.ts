@@ -1,4 +1,6 @@
 import { callLLM, getDefaultModel, type ChatMessage, type ToolCall } from "../llm/provider.js";
+import { MODELS, type ModelKey } from "../llm/parallel.js";
+import { routeMessage } from "./router.js";
 import { getTool } from "../tools/registry.js";
 import {
   saveConversationMessage,
@@ -60,8 +62,11 @@ async function runLoop(
   userId: number,
   userMessage: string
 ): Promise<string> {
-  // Initialize per-request model (starts with default)
-  requestModels.set(userId, getDefaultModel());
+  // Smart router: choose the best model based on user message
+  const route = routeMessage(userMessage);
+  const routedModelId = MODELS[route.primary];
+  requestModels.set(userId, routedModelId);
+  console.log(`[loop] Router: ${route.reason} (model: ${routedModelId})`);
 
   // Save the user message
   await saveConversationMessage(userId, "user", userMessage);
@@ -92,13 +97,15 @@ async function runLoop(
         tool_calls: response.toolCalls,
       });
 
-      // Execute each tool call (pass userId for context)
-      for (const toolCall of response.toolCalls) {
-        const result = await executeToolCall(toolCall, userId);
+      // Execute tool calls in parallel (they are independent)
+      const toolResults = await Promise.all(
+        response.toolCalls.map((tc) => executeToolCall(tc, userId)),
+      );
+      for (let i = 0; i < response.toolCalls.length; i++) {
         messages.push({
           role: "tool",
-          content: result,
-          tool_call_id: toolCall.id,
+          content: toolResults[i],
+          tool_call_id: response.toolCalls[i].id,
         });
       }
 

@@ -7,3 +7,4 @@ import "./web_tools.js";
 import "./browser_tools.js";
 import "./model_tools.js";
 import "./exa_tools.js";
+import "./parallel_tools.js";
