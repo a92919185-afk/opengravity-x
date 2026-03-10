@@ -1,0 +1,75 @@
+{
+  "project": "blackfalcon-offer",
+  "description": "Landing page de afiliado para Black Falcon Drone - Drone para iniciantes com câmera HD",
+  "country": "Canada, Australia",
+  "language": "en",
+  "currency": "USD",
+  "brandColors": {
+    "green": "#22c55e",
+    "greenDark": "#16a34a",
+    "greenLight": "#bbf7d0",
+    "dark": "#111827",
+    "darkMid": "#1f2937",
+    "text": "#374151",
+    "muted": "#6b7280",
+    "bg": "#f9fafb"
+  },
+  "affiliateLinks": {
+    "dtc": "https://www.fasttrack37.com/PM7HK3TH/2T8GK5ZK/?uid=51356",
+    "tsl": "https://www.fasttrack37.com/PM7HK3TH/2T8GK5ZK/?uid=51362"
+  },
+  "productInfo": {
+    "name": "Black Falcon Drone",
+    "benefits": [
+      "HD Camera",
+      "Extended Battery Life",
+      "Silent",
+      "Anti-Collision Technology",
+      "Compact"
+    ],
+    "features": [
+      "HD Camera - Crystal clear aerial photos",
+      "Long Battery - Up to 30 minutes flight time",
+      "Silent - Ultra-quiet motors",
+      "Enhanced Sensors - Anti-collision tech",
+      "Light & Compact - Folds to pocket size",
+      "Aerodynamic - Stable in windy conditions",
+      "Easy to Use - One-button takeoff",
+      "Travel Friendly - Backpack ready"
+    ],
+    "price": "USD 99-199",
+    "guarantee": "30-day money-back guarantee",
+    "trustBadges": [
+      "3,758 Verified Reviews",
+      "4.7 Average Rating",
+      "70% OFF Today",
+      "Ships to CA & AU"
+    ]
+  },
+  "stories": [
+    {
+      "id": "001",
+      "title": "Estrutura de pastas criada",
+      "description": "Pasta blackfalcon-offer/images/ criada",
+      "passes": true
+    },
+    {
+      "id": "002",
+      "title": "HTML completo gerado",
+      "description": "index.html com modelo Black Falcon (dark mode, DTC/TSL)",
+      "passes": true
+    },
+    {
+      "id": "003",
+      "title": "README.md criado",
+      "description": "Documentação rápida do projeto",
+      "passes": true
+    },
+    {
+      "id": "004",
+      "title": "Validação final",
+      "description": "Verificar estrutura e checklist",
+      "passes": false
+    }
+  ]
+}

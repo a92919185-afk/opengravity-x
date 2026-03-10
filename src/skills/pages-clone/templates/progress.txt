@@ -1,0 +1,49 @@
+# Progress Report - [NOME-DO-PRODUTO]
+
+## Codebase Patterns
+
+(Neste espaço serão adicionados aprendizados e padrões descobertos durante o desenvolvimento)
+
+---
+
+## Progress Log
+
+### YYYY-MM-DD - HH:MM - Task [ID]: [TÍTULO]
+
+**Arquivos alterados:**
+- arquivo1.ext
+- arquivo2.ext
+
+**O que foi feito:**
+[Descrição do que foi implementado]
+
+**Aprendizados:**
+[Se algo foi aprendido ou padrão descoberto, adicionar aqui]
+
+---
+
+## Checklist de Validação
+
+- [ ] HTML segue modelo Sema7
+- [ ] Cores configuradas no tailwind.config
+- [ ] Fonte Inter carregada
+- [ ] Hero híbrido (mobile/desktop)
+- [ ] Trust Strip presente
+- [ ] 4 métricas na Seção 3
+- [ ] 6+ feature cards
+- [ ] 3 reviews com cidades do país
+- [ ] 7+ perguntas no FAQ
+- [ ] SEO text block
+- [ ] Footer com modais
+- [ ] Disclaimer discreto
+- [ ] CTA sticky mobile
+- [ ] JSON-LD completo
+
+---
+
+## Como Usar Este Template
+
+1. Copiar templates/prd.json para [projeto]-offer/prd.json
+2. Preencher as informações do produto
+3. Executar Ralph Loop
+4. Registrar progresso aqui a cada commit

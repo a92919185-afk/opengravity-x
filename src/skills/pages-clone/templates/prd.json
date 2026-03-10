@@ -1,0 +1,70 @@
+{
+  "project": "[NOME-DO-PRODUTO]",
+  "description": "Landing page de afiliado para [PRODUTO] no país [PAÍS]",
+  "country": "",
+  "language": "",
+  "currency": "",
+  "brandColors": {
+    "primary": "#059669",
+    "primaryDark": "#047857",
+    "primaryLight": "#10b981",
+    "cta": "#22c55e",
+    "ctaHover": "#16a34a",
+    "gray": "#f5f5f5",
+    "grayMid": "#e5e7eb",
+    "dark": "#1f2937",
+    "text": "#1f2937",
+    "muted": "#6b7280"
+  },
+  "affiliateLinks": {
+    "main": "",
+    "dtc": "",
+    "tsl": ""
+  },
+  "productInfo": {
+    "name": "",
+    "benefits": [],
+    "features": [],
+    "price": "",
+    "guarantee": "",
+    "trustBadges": []
+  },
+  "stories": [
+    {
+      "id": "001",
+      "title": "Analisar informações e definir requisitos",
+      "description": "Extrair todas as informações relevantes do input e definir país, idioma, moeda, cores",
+      "passes": false
+    },
+    {
+      "id": "002",
+      "title": "Criar estrutura de pastas",
+      "description": "Criar pasta do projeto [nome]-offer/ com subpasta images/",
+      "passes": false
+    },
+    {
+      "id": "003",
+      "title": "Gerar HTML completo",
+      "description": "Criar index.html com modelo Sema7, cores definidas, 9 seções, copy do produto",
+      "passes": false
+    },
+    {
+      "id": "004",
+      "title": "Otimizar SEO e Meta Tags",
+      "description": "Adicionar meta tags, Open Graph, Twitter Card, JSON-LD completo",
+      "passes": false
+    },
+    {
+      "id": "005",
+      "title": "Criar documentação README",
+      "description": "Criar README.md com informações do projeto e instruções",
+      "passes": false
+    },
+    {
+      "id": "006",
+      "title": "Validação final",
+      "description": "Verificar estrutura, checklist, links e fazer ajustes necessários",
+      "passes": false
+    }
+  ]
+}
