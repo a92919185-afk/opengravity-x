@@ -1,5 +1,4 @@
 import Groq from "groq-sdk";
-import OpenAI from "openai";
 import { config } from "../config.js";
 import { getToolSchemas } from "../tools/registry.js";
 import fs from "fs";
@@ -7,10 +6,7 @@ import axios from "axios";
 
 // Client initialization with optional keys
 const groqClient = config.GROQ_API_KEY ? new Groq({ apiKey: config.GROQ_API_KEY }) : null;
-const opencodeClient = config.OPENCODE_API_KEY ? new OpenAI({
-  apiKey: config.OPENCODE_API_KEY,
-  baseURL: config.OPENCODE_BASE_URL
-}) : null;
+// OpenCode client will be handled via axios to support different endpoints (/messages vs /chat/completions)
 
 type ChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
@@ -123,7 +119,7 @@ export async function callLLM(messages: ChatMessage[]): Promise<LLMResponse> {
   const toolSchemas = getToolSchemas();
 
   // Try OpenCode first (Primary)
-  if (opencodeClient) {
+  if (config.OPENCODE_API_KEY) {
     try {
       console.log(`[llm] Calling OpenCode (${config.OPENCODE_MODEL})...`);
       return await callOpenCode(messages, toolSchemas);
@@ -159,22 +155,57 @@ async function callOpenCode(
   messages: ChatMessage[],
   tools: ReturnType<typeof getToolSchemas>
 ): Promise<LLMResponse> {
-  if (!opencodeClient) throw new Error("OpenCode client not initialized");
+  const isMiniMax = config.OPENCODE_MODEL.toLowerCase().includes("minimax");
+  const endpoint = isMiniMax ? "/messages" : "/chat/completions";
+  const url = `${config.OPENCODE_BASE_URL.replace(/\/$/, "")}${endpoint}`;
 
-  const response = await opencodeClient.chat.completions.create({
-    model: config.OPENCODE_MODEL,
-    messages: [{ role: "system", content: SYSTEM_PROMPT } as any, ...messages] as any,
-    tools: tools.length > 0 ? (tools as any) : undefined,
-    tool_choice: tools.length > 0 ? "auto" : undefined,
-    temperature: 0.7,
+  console.log(`[llm] OpenCode Endpoint: ${url}`);
+
+  const response = await axios({
+    method: "POST",
+    url,
+    headers: {
+      Authorization: `Bearer ${config.OPENCODE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    data: {
+      model: config.OPENCODE_MODEL,
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+      tools: tools.length > 0 ? tools : undefined,
+      tool_choice: tools.length > 0 ? "auto" : undefined,
+      temperature: 0.7,
+      max_tokens: 4096,
+    },
+    timeout: 60000,
   });
 
-  const choice = response.choices[0];
-  return {
-    content: choice.message.content || null,
-    toolCalls: (choice.message.tool_calls as ToolCall[]) ?? [],
-    finishReason: choice.finish_reason ?? "stop",
-  };
+  // Handle different response formats (OpenAI-like choices vs Anthropic-like messages)
+  if (response.data.choices && response.data.choices.length > 0) {
+    // OpenAI Format
+    const choice = response.data.choices[0];
+    return {
+      content: choice.message.content || null,
+      toolCalls: choice.message.tool_calls ?? [],
+      finishReason: choice.finish_reason ?? "stop",
+    };
+  } else if (response.data.content) {
+    // Anthropic Format (used by some /messages endpoints)
+    const content = response.data.content;
+    let text = "";
+    if (Array.isArray(content)) {
+      text = content.map((c: any) => c.text || "").join("");
+    } else {
+      text = String(content);
+    }
+
+    return {
+      content: text || null,
+      toolCalls: response.data.tool_calls ?? [], // Adaptation if present
+      finishReason: response.data.stop_reason ?? "stop",
+    };
+  }
+
+  throw new Error(`Resposta do OpenCode em formato desconhecido: ${JSON.stringify(response.data)}`);
 }
 
 async function callGroq(
