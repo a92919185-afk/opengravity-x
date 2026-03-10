@@ -1,7 +1,7 @@
-FROM node:20
+FROM node:20-slim
 
-# Install ffmpeg and ca-certificates
-RUN apt-get update && apt-get install -y ffmpeg ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install ffmpeg for audio processing
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -16,4 +16,4 @@ RUN npm run build
 # Port 7860 is required for Hugging Face Spaces
 EXPOSE 7860
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "start"]
