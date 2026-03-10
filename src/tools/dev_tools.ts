@@ -23,7 +23,26 @@ function safePath(filePath: string): string {
   return resolved;
 }
 
-// Blocked commands for security
+// ─── Security: command allowlist ─────────────────────────────
+// Only these commands (first word) are allowed to run.
+// Anything not on this list is blocked by default.
+const ALLOWED_COMMANDS = new Set([
+  // Node / JS
+  "npm", "npx", "node", "yarn", "pnpm", "bun", "tsc", "tsx", "eslint", "prettier",
+  // Python
+  "python", "python3", "pip", "pip3", "poetry", "uv", "uvx",
+  // Git
+  "git",
+  // General dev
+  "make", "cargo", "go", "docker", "docker-compose",
+  // Safe file ops (will be further restricted to projects dir)
+  "ls", "cat", "head", "tail", "find", "grep", "wc", "sort", "uniq", "diff",
+  "mkdir", "cp", "mv", "touch", "echo", "printf", "tree", "which", "env",
+  // Build / test
+  "jest", "vitest", "mocha", "pytest",
+]);
+
+// Extra blocked patterns as a second layer of defense
 const BLOCKED_PATTERNS = [
   /\brm\s+-rf\s+[\/~]/i,
   /\bsudo\b/i,
@@ -32,11 +51,61 @@ const BLOCKED_PATTERNS = [
   /\bchmod\b.*777/i,
   /\bdd\b\s+if=/i,
   /\bmkfs\b/i,
-  /\b:(){/i,
+  /\b:\(\)\{/i,
   /\bformat\b/i,
   /\bshutdown\b/i,
   /\breboot\b/i,
+  /\bkill\b/i,
+  /\bkillall\b/i,
+  /\bpasswd\b/i,
+  /\buseradd\b/i,
+  /\buserdel\b/i,
+  /\/etc\//i,
+  /\/proc\//i,
+  /\/sys\//i,
+  /\/dev\//i,
+  /~\//,
+  /\$HOME/i,
+  /\$\{?ENV\b/i,
+  /\bexport\b/i,
+  /\bsource\b/i,
+  /\beval\b/i,
+  /`[^`]*`/,           // backtick subshells
+  /\$\([^)]*\)/,       // $() subshells
 ];
+
+// Extract the base command (first word, ignoring env vars like KEY=val)
+function getBaseCommand(command: string): string {
+  const parts = command.trim().split(/\s+/);
+  // Skip leading env var assignments (e.g. NODE_ENV=production npm run build)
+  for (const part of parts) {
+    if (!part.includes("=")) return part;
+  }
+  return parts[0];
+}
+
+// ─── Security: sanitized env for child processes ─────────────
+// Only pass safe env vars — never leak API keys, tokens, or secrets.
+function getSafeEnv(): Record<string, string> {
+  const safe: Record<string, string> = {
+    NODE_ENV: "development",
+    PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
+    HOME: process.env.HOME || "/tmp",
+    LANG: process.env.LANG || "en_US.UTF-8",
+    TERM: process.env.TERM || "xterm-256color",
+    SHELL: process.env.SHELL || "/bin/bash",
+    USER: process.env.USER || "user",
+  };
+
+  // Pass npm config vars (needed for npm install/build)
+  for (const [key, val] of Object.entries(process.env)) {
+    if (key.startsWith("npm_config_") && val) {
+      safe[key] = val;
+    }
+  }
+
+  return safe;
+}
 
 // ─── write_file ─────────────────────────────────────────────
 
@@ -233,7 +302,16 @@ registerTool({
     const command = args.command as string;
     const workDir = safePath((args.working_dir as string) || ".");
 
-    // Security check
+    // Layer 1: Allowlist — only known-safe commands can run
+    const baseCmd = getBaseCommand(command);
+    if (!ALLOWED_COMMANDS.has(baseCmd)) {
+      return JSON.stringify({
+        error: `Command not allowed: "${baseCmd}". Only development tools are permitted (npm, git, node, python, etc).`,
+        command,
+      });
+    }
+
+    // Layer 2: Block dangerous patterns (even within allowed commands)
     for (const pattern of BLOCKED_PATTERNS) {
       if (pattern.test(command)) {
         return JSON.stringify({
@@ -253,7 +331,7 @@ registerTool({
         timeout: 120_000, // 2 minutes max
         maxBuffer: 1024 * 1024, // 1MB
         encoding: "utf-8",
-        env: { ...process.env, NODE_ENV: "development" },
+        env: getSafeEnv(),
       });
 
       const trimmed = output.length > 3000 ? output.slice(-3000) + "\n...(truncated)" : output;
@@ -311,6 +389,7 @@ registerTool({
         timeout: 15_000,
         encoding: "utf-8",
         maxBuffer: 512 * 1024,
+        env: getSafeEnv(),
       });
 
       const lines = output.trim().split("\n").filter(Boolean);

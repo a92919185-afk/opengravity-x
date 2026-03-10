@@ -74,9 +74,12 @@ function cleanTechnicalTags(text: string): string {
   return text
     .replace(/<thought>[\s\S]*?<\/thought>/gi, "")
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, "")
+    .replace(/<minimax:tool_call>[\s\S]*?<\/minimax:tool_call>/gi, "")
+    .replace(/<invoke[\s\S]*?<\/invoke>/gi, "")
     .replace(/<function=[\s\S]*?>/gi, "")
     .replace(/<\/function>/gi, "")
     .replace(/<parameter=[\s\S]*?>[\s\S]*?<\/parameter>/gi, "")
+    .replace(/<\/?antml:\w+[^>]*>/gi, "")
     .trim();
 }
 
