@@ -1,4 +1,4 @@
-import { callLLM, type ChatMessage, type ToolCall } from "../llm/provider.js";
+import { callLLM, getDefaultModel, type ChatMessage, type ToolCall } from "../llm/provider.js";
 import { getTool } from "../tools/registry.js";
 import {
   saveConversationMessage,
@@ -7,10 +7,62 @@ import {
 
 const MAX_ITERATIONS = 30;
 
+// ─── Per-user locks: prevent concurrent loops for the same user ───
+const userLocks = new Map<number, Promise<string>>();
+
+// ─── Per-request model context (passed to tools via this map) ─────
+// Key: `${userId}` — each active request has its own model
+const requestModels = new Map<number, string>();
+
+export function getRequestModel(userId: number): string {
+  return requestModels.get(userId) || getDefaultModel();
+}
+
+export function setRequestModel(userId: number, model: string): void {
+  requestModels.set(userId, model);
+  console.log(`[loop] User ${userId} model switched to: ${model}`);
+}
+
 export async function runAgentLoop(
   userId: number,
   userMessage: string
 ): Promise<string> {
+  // Wait for any existing loop for this user to finish
+  const existingLock = userLocks.get(userId);
+  if (existingLock) {
+    console.log(`[loop] User ${userId} already has an active loop, waiting...`);
+    try { await existingLock; } catch {}
+  }
+
+  // Create a new lock for this user
+  let resolveLock: (v: string) => void;
+  const lockPromise = new Promise<string>((resolve) => { resolveLock = resolve; });
+  userLocks.set(userId, lockPromise);
+
+  try {
+    const result = await runLoop(userId, userMessage);
+    resolveLock!(result);
+    return result;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    resolveLock!(msg);
+    throw error;
+  } finally {
+    // Clean up lock and request model
+    if (userLocks.get(userId) === lockPromise) {
+      userLocks.delete(userId);
+    }
+    requestModels.delete(userId);
+  }
+}
+
+async function runLoop(
+  userId: number,
+  userMessage: string
+): Promise<string> {
+  // Initialize per-request model (starts with default)
+  requestModels.set(userId, getDefaultModel());
+
   // Save the user message
   await saveConversationMessage(userId, "user", userMessage);
 
@@ -21,14 +73,15 @@ export async function runAgentLoop(
     content: msg.content,
   }));
 
-  console.log(`[loop] Starting for user ${userId}...`);
+  console.log(`[loop] Starting for user ${userId} (model: ${getRequestModel(userId)})...`);
   let iterations = 0;
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
-    console.log(`[loop] Iteration ${iterations}...`);
+    const currentModel = getRequestModel(userId);
+    console.log(`[loop] Iteration ${iterations} (model: ${currentModel})...`);
 
-    const response = await callLLM(messages);
+    const response = await callLLM(messages, currentModel);
 
     // If there are tool calls, process them
     if (response.toolCalls.length > 0) {
@@ -39,9 +92,9 @@ export async function runAgentLoop(
         tool_calls: response.toolCalls,
       });
 
-      // Execute each tool call
+      // Execute each tool call (pass userId for context)
       for (const toolCall of response.toolCalls) {
-        const result = await executeToolCall(toolCall);
+        const result = await executeToolCall(toolCall, userId);
         messages.push({
           role: "tool",
           content: result,
@@ -83,7 +136,7 @@ function cleanTechnicalTags(text: string): string {
     .trim();
 }
 
-async function executeToolCall(toolCall: ToolCall): Promise<string> {
+async function executeToolCall(toolCall: ToolCall, userId: number): Promise<string> {
   const tool = getTool(toolCall.function.name);
 
   if (!tool) {
@@ -97,6 +150,9 @@ async function executeToolCall(toolCall: ToolCall): Promise<string> {
     if (toolCall.function.arguments) {
       args = JSON.parse(toolCall.function.arguments);
     }
+
+    // Inject userId into args so tools can use per-user context
+    args.__userId = userId;
 
     console.log(`  [tool] ${tool.name}(${JSON.stringify(args)})`);
     const result = await tool.execute(args);

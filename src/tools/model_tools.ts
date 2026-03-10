@@ -1,5 +1,6 @@
 import { registerTool } from "./registry.js";
-import { getActiveModel, setActiveModel } from "../llm/provider.js";
+import { getDefaultModel } from "../llm/provider.js";
+import { getRequestModel, setRequestModel } from "../agent/loop.js";
 
 const AVAILABLE_MODELS: Record<string, { id: string; description: string }> = {
   minimax: {
@@ -45,8 +46,12 @@ registerTool({
       });
     }
 
-    const previous = getActiveModel();
-    setActiveModel(entry.id);
+    const userId = args.__userId as number | undefined;
+    const previous = userId ? getRequestModel(userId) : getDefaultModel();
+
+    if (userId) {
+      setRequestModel(userId, entry.id);
+    }
 
     return JSON.stringify({
       switched: true,
@@ -66,8 +71,9 @@ registerTool({
     type: "object",
     properties: {},
   },
-  execute: async () => {
-    const current = getActiveModel();
+  execute: async (args) => {
+    const userId = args.__userId as number | undefined;
+    const current = userId ? getRequestModel(userId) : getDefaultModel();
     const modelInfo = Object.entries(AVAILABLE_MODELS).find(([_, v]) => v.id === current);
     return JSON.stringify({
       active_model: current,

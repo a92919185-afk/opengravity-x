@@ -7,16 +7,11 @@ import axios from "axios";
 // Client initialization with optional keys
 const groqClient = config.GROQ_API_KEY ? new Groq({ apiKey: config.GROQ_API_KEY }) : null;
 
-// Dynamic model switching — the LLM can change this at runtime via the switch_model tool
-let activeModel: string = config.OPENCODE_MODEL;
+// Default model — used when no per-request model is specified
+const DEFAULT_MODEL: string = config.OPENCODE_MODEL;
 
-export function getActiveModel(): string {
-  return activeModel;
-}
-
-export function setActiveModel(model: string): void {
-  activeModel = model;
-  console.log(`[llm] Model switched to: ${model}`);
+export function getDefaultModel(): string {
+  return DEFAULT_MODEL;
 }
 
 type ChatMessage = {
@@ -163,14 +158,15 @@ When the user wants to BUILD something, follow: Brainstorm (ask questions) → S
 - Summarize tool results naturally (ex: "Memória salva!" em vez de JSON técnico).
 - Keep responses concise. No walls of text.`;
 
-export async function callLLM(messages: ChatMessage[]): Promise<LLMResponse> {
+export async function callLLM(messages: ChatMessage[], model?: string): Promise<LLMResponse> {
   const toolSchemas = getToolSchemas();
+  const requestModel = model || DEFAULT_MODEL;
 
   // Try OpenCode first (Primary)
   if (config.OPENCODE_API_KEY) {
     try {
-      console.log(`[llm] Calling OpenCode (${activeModel})...`);
-      return await callOpenCode(messages, toolSchemas);
+      console.log(`[llm] Calling OpenCode (${requestModel})...`);
+      return await callOpenCode(messages, toolSchemas, requestModel);
     } catch (error) {
       console.error(`[llm] OpenCode call failed: ${(error as any).message}`);
     }
@@ -249,9 +245,10 @@ function toAnthropicMessages(messages: ChatMessage[]): any[] {
 
 async function callOpenCode(
   messages: ChatMessage[],
-  tools: ReturnType<typeof getToolSchemas>
+  tools: ReturnType<typeof getToolSchemas>,
+  model: string
 ): Promise<LLMResponse> {
-  const isMiniMax = activeModel.toLowerCase().includes("minimax");
+  const isMiniMax = model.toLowerCase().includes("minimax");
   const endpoint = isMiniMax ? "/messages" : "/chat/completions";
   const url = `${config.OPENCODE_BASE_URL.replace(/\/$/, "")}${endpoint}`;
 
@@ -278,7 +275,7 @@ async function callOpenCode(
     }));
 
     data = {
-      model: activeModel,
+      model: model,
       system: SYSTEM_PROMPT,
       messages: toAnthropicMessages(messages),
       max_tokens: 4096,
@@ -288,7 +285,7 @@ async function callOpenCode(
   } else {
     // OpenAI-style payload for /chat/completions
     data = {
-      model: activeModel,
+      model: model,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? "auto" : undefined,
