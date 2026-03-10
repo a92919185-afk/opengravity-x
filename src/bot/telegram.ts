@@ -4,6 +4,7 @@ import { runAgentLoop } from "../agent/loop.js";
 import { clearConversationHistory } from "../memory/memory.js";
 import { transcribeAudio, synthesizeSpeech } from "../llm/provider.js";
 import { setNotifyFn } from "../agent/taskqueue.js";
+import { setProgressNotifyFn } from "../agent/progress.js";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -14,8 +15,8 @@ export function createBot(): Bot {
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
   const allowedUserIds = new Set(config.TELEGRAM_ALLOWED_USER_IDS);
 
-  // Connect background task notifications to Telegram (with HTML formatting)
-  setNotifyFn(async (userId: number, message: string) => {
+  // ─── Shared notification sender (used by taskqueue + progress) ───
+  const sendNotification = async (userId: number, message: string) => {
     try {
       const chunks = splitMessage(message, 4096);
       for (const chunk of chunks) {
@@ -29,7 +30,13 @@ export function createBot(): Bot {
     } catch (err) {
       console.error(`[notify] Failed to notify user ${userId}:`, err);
     }
-  });
+  };
+
+  // Connect progress tracker to Telegram
+  setProgressNotifyFn(sendNotification);
+
+  // Connect background task notifications to Telegram
+  setNotifyFn(sendNotification);
 
   // Security middleware: whitelist check
   bot.use(async (ctx, next) => {

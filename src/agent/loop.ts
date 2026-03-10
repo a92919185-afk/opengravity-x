@@ -1,6 +1,7 @@
 import { callLLM, getDefaultModel, type ChatMessage, type ToolCall } from "../llm/provider.js";
 import { MODELS, type ModelKey } from "../llm/parallel.js";
 import { routeMessage } from "./router.js";
+import { startTracking, recordStep, stopTracking } from "./progress.js";
 import { getTool } from "../tools/registry.js";
 import {
   saveConversationMessage,
@@ -78,56 +79,69 @@ async function runLoop(
     content: msg.content,
   }));
 
+  // Start progress tracking for this loop
+  startTracking(userId, getRequestModel(userId), userMessage);
+
   console.log(`[loop] Starting for user ${userId} (model: ${getRequestModel(userId)})...`);
   let iterations = 0;
 
-  while (iterations < MAX_ITERATIONS) {
-    iterations++;
-    const currentModel = getRequestModel(userId);
-    console.log(`[loop] Iteration ${iterations} (model: ${currentModel})...`);
+  try {
+    while (iterations < MAX_ITERATIONS) {
+      iterations++;
+      const currentModel = getRequestModel(userId);
+      console.log(`[loop] Iteration ${iterations} (model: ${currentModel})...`);
 
-    const response = await callLLM(messages, currentModel);
+      const response = await callLLM(messages, currentModel);
 
-    // If there are tool calls, process them
-    if (response.toolCalls.length > 0) {
-      // Add assistant message with tool calls
-      messages.push({
-        role: "assistant",
-        content: response.content ?? "",
-        tool_calls: response.toolCalls,
-      });
-
-      // Execute tool calls in parallel (they are independent)
-      const toolResults = await Promise.all(
-        response.toolCalls.map((tc) => executeToolCall(tc, userId)),
-      );
-      for (let i = 0; i < response.toolCalls.length; i++) {
+      // If there are tool calls, process them
+      if (response.toolCalls.length > 0) {
+        // Add assistant message with tool calls
         messages.push({
-          role: "tool",
-          content: toolResults[i],
-          tool_call_id: response.toolCalls[i].id,
+          role: "assistant",
+          content: response.content ?? "",
+          tool_calls: response.toolCalls,
         });
+
+        // Execute tool calls in parallel (they are independent)
+        // Record each step for progress tracking
+        const toolResults = await Promise.all(
+          response.toolCalls.map(async (tc) => {
+            // Record step BEFORE execution (so user sees what's happening now)
+            await recordStep(userId, tc.function.name, iterations);
+            return executeToolCall(tc, userId);
+          }),
+        );
+        for (let i = 0; i < response.toolCalls.length; i++) {
+          messages.push({
+            role: "tool",
+            content: toolResults[i],
+            tool_call_id: response.toolCalls[i].id,
+          });
+        }
+
+        // Continue the loop to let the LLM process tool results
+        continue;
       }
 
-      // Continue the loop to let the LLM process tool results
-      continue;
+      console.log(`[loop] Final response received.`);
+      let finalContent = response.content ?? "...";
+
+      // Clean up any leaked technical tags
+      finalContent = cleanTechnicalTags(finalContent);
+
+      await saveConversationMessage(userId, "assistant", finalContent);
+      return finalContent;
     }
 
-    console.log(`[loop] Final response received.`);
-    let finalContent = response.content ?? "...";
-
-    // Clean up any leaked technical tags
-    finalContent = cleanTechnicalTags(finalContent);
-
-    await saveConversationMessage(userId, "assistant", finalContent);
-    return finalContent;
+    // Hit iteration limit
+    const fallback =
+      "Desculpe, atingi o limite de iterações ao processar sua mensagem. Tente simplificar a pergunta.";
+    await saveConversationMessage(userId, "assistant", fallback);
+    return fallback;
+  } finally {
+    // Always stop tracking when loop ends
+    await stopTracking(userId);
   }
-
-  // Hit iteration limit
-  const fallback =
-    "Desculpe, atingi o limite de iterações ao processar sua mensagem. Tente simplificar a pergunta.";
-  await saveConversationMessage(userId, "assistant", fallback);
-  return fallback;
 }
 
 function cleanTechnicalTags(text: string): string {
