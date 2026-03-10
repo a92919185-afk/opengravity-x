@@ -6,6 +6,12 @@ description: Starts the Ralph Autonomous Agent Loop. Iterates through prd.json, 
 
 **Prerequisite:** Ensure a valid `prd.json` exists. If it doesn't, guide the user to create one first by gathering requirements and generating granular micro-tasks using the `autonomous-ralph` skill.
 
+## 🤝 Transparência e Feedback (Regra de Ouro)
+
+- **Sem Silêncio:** NUNCA execute tarefas longas sem dar um sinal de vida. Informe o que está fazendo a cada iteração importante.
+- **Relate Falhas:** Se um comando falhar, um site bloquear o acesso ou ocorrer um erro inesperado, avise o usuário IMEDIATAMENTE. Explique o que falhou e o que você planeja tentar em seguida.
+- **Peça Ajuda:** Se você perceber que está "andando em círculos" (tentando a mesma coisa 2-3 vezes sem sucesso), pare e peça orientação ao usuário.
+
 ## Execution Steps
 
 ### 1. Initialization
