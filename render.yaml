@@ -8,8 +8,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "7860"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_ALLOWED_USER_IDS
@@ -17,8 +15,6 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY
-        sync: false
-      - key: WEBHOOK_URL
         sync: false
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
