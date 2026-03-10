@@ -37,6 +37,11 @@ export function createBot(): Bot {
     await ctx.reply("Histórico de conversa limpo.");
   });
 
+  // /ping command
+  bot.command("ping", async (ctx) => {
+    await ctx.reply("PONG! O bot no Hugging Face está ativo. 🏓");
+  });
+
   // Handle all text messages
   bot.on("message:text", async (ctx) => {
     const userId = ctx.from.id;

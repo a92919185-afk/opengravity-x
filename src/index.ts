@@ -60,18 +60,32 @@ async function startBot() {
 
 async function main() {
   // Handle cloud secrets (Hugging Face / Render)
-  if (process.env.FIREBASE_SERVICE_ACCOUNT && !fs.existsSync("./service-account.json")) {
-    console.log("[system] Creating service-account.json from environment variable...");
-    fs.writeFileSync("./service-account.json", process.env.FIREBASE_SERVICE_ACCOUNT);
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    console.log("[system] FIREBASE_SERVICE_ACCOUNT detected in environment.");
+    if (!fs.existsSync("./service-account.json")) {
+      console.log("[system] Creating service-account.json from environment variable...");
+      fs.writeFileSync("./service-account.json", process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+      console.log("[system] service-account.json already exists.");
+    }
+
+    // Ensure GOOGLE_APPLICATION_CREDENTIALS points to this file if not already set or if it's pointing elsewhere
+    // If the user put the JSON content IN Google_Application_Credentials by mistake, this will fix it for our app
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_APPLICATION_CREDENTIALS.includes("{")) {
+      console.log("[system] Setting GOOGLE_APPLICATION_CREDENTIALS to ./service-account.json");
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = "./service-account.json";
+    }
   }
 
   console.log("================================");
   console.log("  OpenGravity - Starting...");
   console.log("================================");
   console.log(`Allowed users: ${config.TELEGRAM_ALLOWED_USER_IDS.join(", ")}`);
+  console.log(`Token (last 4 chars): ****${config.TELEGRAM_BOT_TOKEN.slice(-4)}`);
   console.log(`Database: Firebase Firestore`);
 
   startHealthCheck();
+  console.log("[system] Bot process initialized. Starting bot polling...");
   await startBot();
 }
 
