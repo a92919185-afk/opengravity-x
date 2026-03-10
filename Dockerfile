@@ -5,15 +5,16 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Install dependencies first (for better caching)
 COPY package*.json ./
 RUN npm install
 
+# Copy everything and build
 COPY . .
-
-# Build TypeScript
 RUN npm run build
 
 # Port 10000 is default for Render
 EXPOSE 10000
 
-CMD ["npm", "run", "start"]
+# Start from the compiled dist/ directory (uses less memory than tsx)
+CMD ["node", "dist/index.js"]
