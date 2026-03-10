@@ -42,6 +42,9 @@ async function startBot() {
   console.log("[system] Entering bot loop...");
   while (true) {
     try {
+      console.log("[system] Deleting any existing webhooks...");
+      await bot.api.deleteWebhook({ drop_pending_updates: true });
+
       console.log("[system] Starting bot.start()...");
       await bot.start({
         onStart: (botInfo) => {
