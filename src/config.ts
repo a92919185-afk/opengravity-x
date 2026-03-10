@@ -20,6 +20,7 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: z.string().default(""),
   OPENROUTER_MODEL: z.string().default("google/gemini-2.0-flash-001"),
   TAVILY_API_KEY: z.string().optional(),
+  EXA_API_KEY: z.string().optional(),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_VOICE_ID: z.string().optional(),
