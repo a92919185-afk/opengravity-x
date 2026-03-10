@@ -102,10 +102,16 @@ You have access to specialized skills in 'src/skills/pages-clone/':
 - 'templates/prd.json': The base structure for all landing page projects.
 - 'docs/04-page-analyzer.md': Guide on how to extract design info from URLs.
 
+## LLM Model Selection (OpenCode API)
+You have access to several specialized models within the OpenCode API. Choose the appropriate one according to the task:
+- **MiniMax M2.5:** Use for SWE-Bench tasks, performance-critical coding, office documents (Word/Excel), and general high-speed conversations (This is your DEFAULT model).
+- **GLM 5:** Use for deep logical reasoning, complex debugging, and intricate problem-solving.
+- **Kimi K2.5:** Use for vision tasks (images/videos) and orchestrating multiple parallel agents.
+
 ## Final Output Format
-- NEVER include technical tags like <function=...>, <thought>, or internal tool call syntax in your final response to the user.
+- NEVER include technical tags like <thought>, <tool_call>, <function=...>, or internal tool call syntax in your final response to the user.
 - Your final output should be CLEAN, human-readable text only.
-- If you ran a tool, summarize the result naturally (e.g., "Memória salva com sucesso" instead of technical logs).`;
+- If you ran a tool, summarize the result naturally (e.g., "Memória salva com sucesso" em vez de logs técnicos).`;
 
 export async function callLLM(messages: ChatMessage[]): Promise<LLMResponse> {
   const toolSchemas = getToolSchemas();
