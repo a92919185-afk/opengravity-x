@@ -20,8 +20,8 @@ const envSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_VOICE_ID: z.string().optional(),
   PROJECTS_DIR: z.string().default("./projects"),
-  WEBHOOK_URL: z.string().optional(),
 });
+
 
 const parsed = envSchema.safeParse(process.env);
 

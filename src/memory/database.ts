@@ -1,4 +1,4 @@
-import { initializeApp, getApps, type App } from "firebase-admin/app";
+import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 let db: Firestore;
@@ -7,9 +7,14 @@ export function getDatabase(): Firestore {
   if (!db) {
     let app: App;
     if (getApps().length === 0) {
-      // Initialize using the default Firebase configuration.
-      // E.g. relying on GOOGLE_APPLICATION_CREDENTIALS environment variable
-      app = initializeApp();
+      if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        // Cloud: parse JSON from env var directly (no file needed)
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        app = initializeApp({ credential: cert(serviceAccount) });
+      } else {
+        // Local: rely on GOOGLE_APPLICATION_CREDENTIALS file
+        app = initializeApp();
+      }
     } else {
       app = getApps()[0];
     }
@@ -19,7 +24,5 @@ export function getDatabase(): Firestore {
 }
 
 export function closeDatabase(): void {
-  // In typical Node.js scripts using firebase-admin, you do not need 
-  // to explicitly close the connection. However, we leave this no-op
-  // to remain compatible with existing gracefully shutdown handlers.
+  // No-op for compatibility with graceful shutdown handlers.
 }
