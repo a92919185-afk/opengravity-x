@@ -13,13 +13,6 @@ export function createBot(): Bot {
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
   const allowedUserIds = new Set(config.TELEGRAM_ALLOWED_USER_IDS);
 
-  // TRACE LOG
-  bot.use(async (ctx, next) => {
-    const updateType = Object.keys(ctx.update).filter(k => k !== 'update_id')[0];
-    console.log(`[trace] Received update_id: ${ctx.update.update_id} | Type: ${updateType} | From: ${ctx.from?.id}`);
-    await next();
-  });
-
   // Security middleware: whitelist check
   bot.use(async (ctx, next) => {
     const userId = ctx.from?.id;
@@ -42,11 +35,6 @@ export function createBot(): Bot {
     const userId = ctx.from!.id;
     await clearConversationHistory(userId);
     await ctx.reply("Histórico de conversa limpo.");
-  });
-
-  // /ping command
-  bot.command("ping", async (ctx) => {
-    await ctx.reply("PONG! O bot no Hugging Face está ativo. 🏓");
   });
 
   // Handle all text messages
