@@ -159,23 +159,52 @@ async function callOpenCode(
   const endpoint = isMiniMax ? "/messages" : "/chat/completions";
   const url = `${config.OPENCODE_BASE_URL.replace(/\/$/, "")}${endpoint}`;
 
-  console.log(`[llm] OpenCode Endpoint: ${url}`);
+  console.log(`[llm] OpenCode Endpoint: ${url} (System: ${isMiniMax ? 'Anthropic-style' : 'OpenAI-style'})`);
 
-  const response = await axios({
-    method: "POST",
-    url,
-    headers: {
-      Authorization: `Bearer ${config.OPENCODE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    data: {
+  const headers: any = {
+    "Content-Type": "application/json",
+  };
+
+  if (isMiniMax) {
+    headers["x-api-key"] = config.OPENCODE_API_KEY;
+    // Some proxies also look for anthropic-version if they act as a direct passthrough
+    headers["anthropic-version"] = "2023-06-01";
+  } else {
+    headers["Authorization"] = `Bearer ${config.OPENCODE_API_KEY}`;
+  }
+
+  // Build payload based on format
+  let data: any;
+  if (isMiniMax) {
+    // Anthropic-style payload for /messages
+    data = {
+      model: config.OPENCODE_MODEL,
+      system: SYSTEM_PROMPT,
+      messages: messages.filter(m => m.role !== 'system').map(m => ({
+        role: m.role,
+        content: m.content
+      })),
+      max_tokens: 4096,
+      temperature: 0.7,
+      // Tools support for Anthropic if needed (OpenCode Go might handle mapping)
+    };
+  } else {
+    // OpenAI-style payload for /chat/completions
+    data = {
       model: config.OPENCODE_MODEL,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? "auto" : undefined,
       temperature: 0.7,
       max_tokens: 4096,
-    },
+    };
+  }
+
+  const response = await axios({
+    method: "POST",
+    url,
+    headers,
+    data,
     timeout: 60000,
   });
 
