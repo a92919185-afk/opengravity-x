@@ -13,7 +13,10 @@ const envSchema = z.object({
         return parsed;
       })
     ),
-  GROQ_API_KEY: z.string().min(1, "GROQ_API_KEY is required"),
+  GROQ_API_KEY: z.string().optional(),
+  OPENCODE_API_KEY: z.string().optional(),
+  OPENCODE_BASE_URL: z.string().default("https://opencode.ai/zen/go/v1"),
+  OPENCODE_MODEL: z.string().default("minimax-m2.5"),
   OPENROUTER_API_KEY: z.string().default(""),
   OPENROUTER_MODEL: z.string().default("meta-llama/llama-3.3-70b-instruct:free"),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),

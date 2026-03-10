@@ -1,8 +1,16 @@
 import Groq from "groq-sdk";
+import OpenAI from "openai";
 import { config } from "../config.js";
 import { getToolSchemas } from "../tools/registry.js";
 import fs from "fs";
 import axios from "axios";
+
+// Client initialization with optional keys
+const groqClient = config.GROQ_API_KEY ? new Groq({ apiKey: config.GROQ_API_KEY }) : null;
+const opencodeClient = config.OPENCODE_API_KEY ? new OpenAI({
+  apiKey: config.OPENCODE_API_KEY,
+  baseURL: config.OPENCODE_BASE_URL
+}) : null;
 
 type ChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
@@ -25,8 +33,6 @@ export interface LLMResponse {
   toolCalls: ToolCall[];
   finishReason: string;
 }
-
-const groqClient = new Groq({ apiKey: config.GROQ_API_KEY });
 
 const SYSTEM_PROMPT = `You are OpenGravity, a personal AI development agent. You communicate via Telegram and can build complete software applications.
 
@@ -116,34 +122,67 @@ You have access to several specialized models within the OpenCode API. Choose th
 export async function callLLM(messages: ChatMessage[]): Promise<LLMResponse> {
   const toolSchemas = getToolSchemas();
 
-  try {
-    console.log("[llm] Calling Groq...");
-    return await callGroq(messages, toolSchemas);
-  } catch (error) {
-    const errorMsg = (error as any).message || String(error);
-    console.error(`[llm] Groq call failed: ${errorMsg}`);
-
-    if (config.OPENROUTER_API_KEY) {
-      console.warn(`[llm] Trying OpenRouter fallback with model: ${config.OPENROUTER_MODEL}`);
-      try {
-        return await callOpenRouter(messages, toolSchemas);
-      } catch (orError: any) {
-        if (orError.response) {
-          console.error(`[llm] OpenRouter Error: ${orError.response.status} ${JSON.stringify(orError.response.data)}`);
-        } else {
-          console.error(`[llm] OpenRouter fallback also failed:`, orError.message || orError);
-        }
-        throw orError;
-      }
+  // Try OpenCode first (Primary)
+  if (opencodeClient) {
+    try {
+      console.log(`[llm] Calling OpenCode (${config.OPENCODE_MODEL})...`);
+      return await callOpenCode(messages, toolSchemas);
+    } catch (error) {
+      console.error(`[llm] OpenCode call failed: ${(error as any).message}`);
     }
-    throw error;
   }
+
+  // Fallback 1: OpenRouter
+  if (config.OPENROUTER_API_KEY) {
+    try {
+      console.warn(`[llm] Trying OpenRouter fallback with model: ${config.OPENROUTER_MODEL}`);
+      return await callOpenRouter(messages, toolSchemas);
+    } catch (orError: any) {
+      console.error(`[llm] OpenRouter fallback failed: ${orError.message}`);
+    }
+  }
+
+  // Fallback 2: Groq (Legacy/Emergency)
+  if (groqClient) {
+    try {
+      console.log("[llm] Calling Groq as final fallback...");
+      return await callGroq(messages, toolSchemas);
+    } catch (error) {
+      console.error(`[llm] Groq final fallback failed: ${(error as any).message}`);
+    }
+  }
+
+  throw new Error("All LLM providers failed or no provider keys configured.");
+}
+
+async function callOpenCode(
+  messages: ChatMessage[],
+  tools: ReturnType<typeof getToolSchemas>
+): Promise<LLMResponse> {
+  if (!opencodeClient) throw new Error("OpenCode client not initialized");
+
+  const response = await opencodeClient.chat.completions.create({
+    model: config.OPENCODE_MODEL,
+    messages: [{ role: "system", content: SYSTEM_PROMPT } as any, ...messages] as any,
+    tools: tools.length > 0 ? (tools as any) : undefined,
+    tool_choice: tools.length > 0 ? "auto" : undefined,
+    temperature: 0.7,
+  });
+
+  const choice = response.choices[0];
+  return {
+    content: choice.message.content || null,
+    toolCalls: (choice.message.tool_calls as ToolCall[]) ?? [],
+    finishReason: choice.finish_reason ?? "stop",
+  };
 }
 
 async function callGroq(
   messages: ChatMessage[],
   tools: ReturnType<typeof getToolSchemas>
 ): Promise<LLMResponse> {
+  if (!groqClient) throw new Error("Groq client not initialized");
+
   const response = await groqClient.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [{ role: "system", content: SYSTEM_PROMPT } as any, ...messages] as any,
@@ -192,6 +231,10 @@ async function callOpenRouter(
 }
 
 export async function transcribeAudio(filePath: string): Promise<string> {
+  if (!groqClient) {
+    throw new Error("Transcreção de áudio requer uma GROQ_API_KEY configurada.");
+  }
+
   console.log(`[llm] Transcribing audio: ${filePath}`);
   const transcription = await groqClient.audio.transcriptions.create({
     file: fs.createReadStream(filePath),
