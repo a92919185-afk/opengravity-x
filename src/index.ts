@@ -61,7 +61,30 @@ async function startBot() {
   }
 }
 
+async function testConnectivity() {
+  console.log("[debug-network] Testing DNS for api.telegram.org...");
+  try {
+    const { lookup } = await import("dns/promises");
+    const address = await lookup("api.telegram.org");
+    console.log(`[debug-network] DNS success: api.telegram.org -> ${address.address}`);
+  } catch (err: any) {
+    console.warn(`[debug-network] DNS FAILED for api.telegram.org: ${err.message}`);
+  }
+
+  console.log("[debug-network] Testing HTTP to google.com...");
+  try {
+    const { default: axios } = await import("axios");
+    const res = await axios.get("https://google.com", { timeout: 5000 });
+    console.log(`[debug-network] HTTP success: google.com (status ${res.status})`);
+  } catch (err: any) {
+    console.warn(`[debug-network] HTTP FAILED for google.com: ${err.message}`);
+  }
+}
+
 async function main() {
+  // Network tests
+  await testConnectivity();
+
   // Handle cloud secrets (Hugging Face / Render)
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     console.log("[system] FIREBASE_SERVICE_ACCOUNT detected in environment.");
