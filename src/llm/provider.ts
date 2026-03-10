@@ -169,6 +169,8 @@ async function callOpenRouter(
     data: {
       model: config.OPENROUTER_MODEL,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+      tools: tools.length > 0 ? tools : undefined,
+      tool_choice: tools.length > 0 ? "auto" : undefined,
       max_tokens: 4096,
       temperature: 0.7,
     },

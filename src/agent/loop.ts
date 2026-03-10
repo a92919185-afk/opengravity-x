@@ -54,7 +54,11 @@ export async function runAgentLoop(
     }
 
     console.log(`[loop] Final response received.`);
-    const finalContent = response.content ?? "...";
+    let finalContent = response.content ?? "...";
+
+    // Clean up any leaked technical tags
+    finalContent = cleanTechnicalTags(finalContent);
+
     await saveConversationMessage(userId, "assistant", finalContent);
     return finalContent;
   }
@@ -64,6 +68,16 @@ export async function runAgentLoop(
     "Desculpe, atingi o limite de iterações ao processar sua mensagem. Tente simplificar a pergunta.";
   await saveConversationMessage(userId, "assistant", fallback);
   return fallback;
+}
+
+function cleanTechnicalTags(text: string): string {
+  return text
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, "")
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, "")
+    .replace(/<function=[\s\S]*?>/gi, "")
+    .replace(/<\/function>/gi, "")
+    .replace(/<parameter=[\s\S]*?>[\s\S]*?<\/parameter>/gi, "")
+    .trim();
 }
 
 async function executeToolCall(toolCall: ToolCall): Promise<string> {
