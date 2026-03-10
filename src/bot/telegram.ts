@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { runAgentLoop } from "../agent/loop.js";
 import { clearConversationHistory } from "../memory/memory.js";
 import { transcribeAudio, synthesizeSpeech } from "../llm/provider.js";
+import { setNotifyFn } from "../agent/taskqueue.js";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -12,6 +13,23 @@ import axios from "axios";
 export function createBot(): Bot {
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
   const allowedUserIds = new Set(config.TELEGRAM_ALLOWED_USER_IDS);
+
+  // Connect background task notifications to Telegram
+  setNotifyFn(async (userId: number, message: string) => {
+    try {
+      const MAX_LENGTH = 4096;
+      if (message.length <= MAX_LENGTH) {
+        await bot.api.sendMessage(userId, message);
+      } else {
+        // Split long notifications
+        for (let i = 0; i < message.length; i += MAX_LENGTH) {
+          await bot.api.sendMessage(userId, message.substring(i, i + MAX_LENGTH));
+        }
+      }
+    } catch (err) {
+      console.error(`[notify] Failed to notify user ${userId}:`, err);
+    }
+  });
 
   // Security middleware: whitelist check
   bot.use(async (ctx, next) => {

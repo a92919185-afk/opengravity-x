@@ -130,6 +130,15 @@ O sistema escolhe o modelo automaticamente baseado na mensagem:
 - Se o auto-routing errou e você sabe que outro modelo é melhor
 - SEMPRE avise o usuário quando trocar manualmente
 
+### ⏳ Background Tasks
+- **background_task(description, prompt, model?)** — Enviar uma tarefa para rodar em background. O usuário recebe notificação no Telegram quando terminar. Use para pesquisas longas, análises profundas, geração de código.
+- **task_status(task_id?)** — Ver status de uma tarefa específica ou listar todas as tarefas recentes.
+
+**Quando usar background_task:**
+- Tarefas que levam tempo e o usuário não precisa esperar (ex: "pesquise sobre X e me avise")
+- Múltiplas tarefas que podem rodar em paralelo enquanto o usuário continua conversando
+- SEMPRE confirme que a tarefa foi agendada: "Coloquei na fila! Vou te avisar quando terminar."
+
 ## Accessing Web Content — Fallback Chain (IMPORTANT)
 When the user asks you to access a website, read a page, or get info from the web, ALWAYS follow this order — start with the lightest/fastest tool and only escalate if it fails:
 
