@@ -3,7 +3,24 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(pkill -f \"tsx watch src/index.ts\" 2>/dev/null; sleep 1; echo \"stopped\")"
+      "Bash(pkill -f \"tsx watch src/index.ts\" 2>/dev/null; sleep 1; echo \"stopped\")",
+      "WebFetch(domain:api.telegram.org)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls -la /mnt/c/Users/Vinicius/Desktop/OpenGravity/ | grep -E \"\\\\.\\(md|json\\)$\")",
+      "Bash(find /mnt/c/Users/Vinicius/Desktop/OpenGravity -maxdepth 2 -type f \\\\\\( -name \"README*\" -o -name \"CLAUDE*\" -o -name \"*.md\" \\\\\\) 2>/dev/null | grep -v node_modules)",
+      "Bash(gh auth:*)",
+      "Read(//home/vinicius/**)",
+      "Bash(git remote:*)",
+      "WebFetch(domain:mcpmarket.com)",
+      "WebSearch",
+      "Bash(curl -s -L --max-time 15 \"https://mcpmarket.com/tools/skills/coding-agent-orchestrator-1\" | sed 's/<[^>]*>//g' | sed '/^\\\\s*$/d' | head -300)",
+      "Bash(curl -s -L --max-time 15 -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://mcpmarket.com/tools/skills/coding-agent-orchestrator-1\" | sed 's/<script[^>]*>.*<\\\\/script>//g' | sed 's/<style[^>]*>.*<\\\\/style>//g' | sed 's/<[^>]*>//g' | sed '/^\\\\s*$/d' | head -400)",
+      "WebFetch(domain:exa.ai)",
+      "WebFetch(domain:docs.exa.ai)",
+      "Bash(ls node_modules/exa-js/dist/*.d.ts 2>/dev/null || ls node_modules/exa-js/dist/*.d.mts 2>/dev/null || find node_modules/exa-js -name \"*.d.ts\" -o -name \"*.d.mts\" | head -5)"
     ]
   },
   "outputStyle": "default"
